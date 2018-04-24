@@ -1,6 +1,6 @@
 <?php
 /*
-Plugin Name:  Woocommerce Force Password Change
+Plugin Name:  WooCommerce Force Password Change
 Description:  Require customers to change their password on first login.
 Version:      0.7
 License:      GPL v2 or later
@@ -16,28 +16,9 @@ Domain Path:  /languages/
 	-----------------
 
 	Based on plugin by Simon Blackbourn (https://twitter.com/lumpysimon, simon@lumpylemon.co.uk)
-	This plugin redirects newly-registered users to the Admin -> Edit Profile page when they first log in.
-	Until they have changed their password, they will not be able to access either the front-end or other admin pages.
-	An admin notice is also displayed informing them that they must change their password.
-
-	New administrators must also change their password, but as a safety measure they can also access the Admin -> Plugins page.
-
-	Please report any bugs on the WordPress support forum at http://wordpress.org/support/plugin/force-password-change or via GitHub at https://github.com/lumpysimon/wp-force-password-change/issues
-
-	Development takes place at https://github.com/lumpysimon/wp-force-password-change (all pull requests will be considered)
-
-
-
-	About me
-	--------
-
-	I'm Simon Blackbourn, co-founder of Lumpy Lemon, a small & friendly UK-based
-	WordPress design & development company specialising in custom-built WordPress CMS sites.
-	I work mainly, but not exclusively, with not-for-profit organisations.
-
-	Find me on Twitter, Skype & GitHub: lumpysimon
-
-
+	This plugin redirects newly-registered customers to the My Account > My Profile page when they first log in.
+	Until they have changed their password, they will not be able to access the rest of the site.
+	A WooCommerce notice is also displayed informing them that they must change their password.
 
 	License
 	-------
@@ -56,9 +37,6 @@ Domain Path:  /languages/
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
-
-
-
 */
 
 
@@ -72,7 +50,7 @@ class force_password_change {
 		add_action( 'woocommerce_save_account_details', array( $this, 'updated' ), 10, 1 );
 		add_action( 'template_redirect', array( $this, 'redirect' ) );
 		add_action( 'current_screen', array( $this, 'redirect' ) );
-		add_action( 'woocommerce_init', array( $this, 'notice' ) );
+		add_action( 'init', array( $this, 'notice' ) );
 	}
 
 	// load localisation files
@@ -94,27 +72,22 @@ class force_password_change {
 
 	}
 
-
 	// delete the user meta field when a user successfully changes their password
 	function updated( $user_id ) {
-		if ( isset( $_POST['password_1'] ) ) {
-			$pass1 = $_POST['password_1'];
-		}
+		if ( get_user_meta( $user_id, 'force-password-change', true ) ) {
+			$pass1 = ! empty( $_POST['password_1'] ) ? $_POST['password_1'] : '';
+			$pass2 = ! empty( $_POST['password_2'] ) ? $_POST['password_2'] : '';
 
-		if ( isset( $_POST['password_2'] ) ) {
-			$pass2 = $_POST['password_2'];
-		}
-
-		if ( isset( $_POST['password_1'] ) && isset( $_POST['password_2'] ) ) {
 			if ( $pass1 != $pass2 or empty( $pass1 ) or empty( $pass2 ) or false !== strpos( stripslashes( $pass1 ), "\\" ) ) {
 				return;
 			}
-			wc_clear_notices();
+
 			delete_user_meta( $user_id, 'force-password-change' );
-			wp_redirect(site_url());
+			wc_clear_notices();
+			wc_add_notice( __( 'Password changed successfully.', 'woocommerce' ) );
+			wp_safe_redirect( site_url() );
+			exit;
 		}
-
-
 	}
 
 	// if:
@@ -129,7 +102,7 @@ class force_password_change {
 			return;
 		}
 
-		if ( is_wc_endpoint_url( 'edit-account' ) || is_wc_endpoint_url( 'customer-logout' )) {
+		if ( is_wc_endpoint_url( 'edit-account' ) || is_wc_endpoint_url( 'customer-logout' ) ) {
 			return;
 		}
 
@@ -137,7 +110,7 @@ class force_password_change {
 
 		if ( get_user_meta( $current_user->ID, 'force-password-change', true ) ) {
 			//wp_redirect( wc_get_endpoint_url( 'edit-account' ) );
-			wp_redirect(site_url(). '/my-account/edit-account/');
+			wp_redirect( site_url() . '/my-account/edit-account/' );
 			exit; // never forget this after wp_redirect!
 		}
 	}
@@ -148,6 +121,7 @@ class force_password_change {
 		wp_get_current_user();
 
 		if ( get_user_meta( $current_user->ID, 'force-password-change', true ) ) {
+			// Prevent double notices
 			wc_clear_notices();
 			wc_add_notice( __( 'Please change your password in order to continue using this website.', 'force-password-change' ) );
 		}
