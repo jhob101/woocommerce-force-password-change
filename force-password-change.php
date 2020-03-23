@@ -108,9 +108,8 @@ class force_password_change {
 
 		wp_get_current_user();
 
-		if ( get_user_meta( $current_user->ID, 'force-password-change', true ) ) {
-			//wp_redirect( wc_get_endpoint_url( 'edit-account' ) );
-			wp_redirect( site_url() . '/my-account/edit-account/' );
+		if ( get_user_meta( $current_user->ID, 'force-password-change', true ) ) {		
+			wp_safe_redirect(wc_get_endpoint_url('edit-account', '', wc_get_page_permalink('myaccount')));
 			exit; // never forget this after wp_redirect!
 		}
 	}
